@@ -1,0 +1,292 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =====================================
+// ORGANIZATION / TENANT
+// =====================================
+
+model Organization {
+  id String @id @default(uuid())
+
+  name  String
+  email String?
+  phone String?
+
+  isActive Boolean @default(true)
+
+  subscription Subscription?
+
+  users User[]
+
+  farms Farm[]
+
+  roles Role[]
+
+  suppliers Supplier[]
+
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// SUBSCRIPTION
+// =====================================
+
+model Subscription {
+  id String @id @default(uuid())
+
+  plan String
+
+  status String @default("ACTIVE")
+
+  organizationId String @unique
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  startDate DateTime @default(now())
+
+  endDate DateTime?
+}
+
+// =====================================
+// USERS
+// =====================================
+
+model User {
+  id String @id @default(uuid())
+
+  firstName String
+  lastName  String
+
+  email String @unique
+
+  passwordHash String
+
+  isActive Boolean @default(true)
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userRoles UserRole[]
+
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// SECURITY / RBAC
+// =====================================
+
+model Role {
+  id String @id @default(uuid())
+
+  name String
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userRoles UserRole[]
+
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+}
+
+model Permission {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  description String?
+
+  roles RolePermission[]
+}
+
+model UserRole {
+  id String @id @default(uuid())
+
+  userId String
+
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+model RolePermission {
+  id String @id @default(uuid())
+
+  roleId String
+
+  permissionId String
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+}
+
+// =====================================
+// FARM MANAGEMENT
+// =====================================
+
+model Farm {
+  id String @id @default(uuid())
+
+  name String
+
+  code String?
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  profile FarmProfile?
+
+  facilities Facility[]
+
+  productionUnits ProductionUnit[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model FarmProfile {
+  id String @id @default(uuid())
+
+  farmId String @unique
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  farmType String
+
+  country String?
+
+  region String?
+
+  district String?
+
+  size Decimal?
+
+  sizeUnit String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model Facility {
+  id String @id @default(uuid())
+
+  name String
+
+  farmId String
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model ProductionUnit {
+  id String @id @default(uuid())
+
+  name String
+
+  type String
+
+  farmId String
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// INVENTORY / SUPPLIERS
+// =====================================
+
+model Supplier {
+  id String @id @default(uuid())
+
+  name String
+
+  phone String?
+
+  email String?
+
+  address String?
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  items InventoryItem[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model InventoryItem {
+  id String @id @default(uuid())
+
+  name String
+
+  code String?
+
+  category String
+
+  unit String
+
+  minimumStock Decimal?
+
+  supplierId String?
+
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// AUDIT LOG
+// =====================================
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  action String
+
+  entity String
+
+  entityId String?
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userId String?
+
+  user User? @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+}
