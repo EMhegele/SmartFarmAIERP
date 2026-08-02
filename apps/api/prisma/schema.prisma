@@ -7,18 +7,56 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Organization {
-  id   String @id @default(uuid())
-  name String @unique
+// =====================================
+// MULTI TENANT ERP CORE
+// =====================================
 
-  users      User[]
-  facilities Facility[]
-  products   Product[]
-  categories ProductCategory[]
+model Organization {
+  id String @id @default(uuid())
+
+  name  String
+  email String?
+  phone String?
+
+  isActive Boolean @default(true)
+
+  subscription Subscription?
+
+  users User[]
+
+  farms Farm[]
+
+  roles Role[]
+
+  auditLogs AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// =====================================
+// SUBSCRIPTION / SaaS
+// =====================================
+
+model Subscription {
+  id String @id @default(uuid())
+
+  plan String
+
+  status String @default("ACTIVE")
+
+  organizationId String @unique
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  startDate DateTime @default(now())
+
+  endDate DateTime?
+}
+
+// =====================================
+// USERS & SECURITY
+// =====================================
 
 model User {
   id String @id @default(uuid())
@@ -26,7 +64,8 @@ model User {
   firstName String
   lastName  String
 
-  email        String @unique
+  email String @unique
+
   passwordHash String
 
   isActive Boolean @default(true)
@@ -37,32 +76,89 @@ model User {
 
   userRoles UserRole[]
 
+  auditLogs AuditLog[]
+
   createdAt DateTime @default(now())
+
   updatedAt DateTime @updatedAt
 }
+
+// =====================================
+// ROLE BASED ACCESS CONTROL
+// =====================================
 
 model Role {
   id String @id @default(uuid())
 
-  name String @unique
+  name String
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   userRoles UserRole[]
 
+  permissions RolePermission[]
+
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model Permission {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  description String?
+
+  roles RolePermission[]
 }
 
 model UserRole {
   id String @id @default(uuid())
 
   userId String
+
   roleId String
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+model RolePermission {
+  id String @id @default(uuid())
+
+  roleId String
+
+  permissionId String
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+}
+
+// =====================================
+// FARM STRUCTURE
+// =====================================
+
+model Farm {
+  id String @id @default(uuid())
+
+  name String
+
+  code String?
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  facilities Facility[]
+
+  productionUnits ProductionUnit[]
 
   createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
 }
 
 model Facility {
@@ -70,127 +166,55 @@ model Facility {
 
   name String
 
-  code String?
+  farmId String
 
-  description String?
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// PRODUCTION AREAS
+// =====================================
+
+model ProductionUnit {
+  id String @id @default(uuid())
+
+  name String
+
+  type String
+
+  farmId String
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// AUDIT TRAIL
+// =====================================
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  action String
+
+  entity String
+
+  entityId String?
 
   organizationId String
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  userId String?
 
-  updatedAt DateTime @updatedAt
-}
-
-model ProductCategory {
-  id String @id @default(uuid())
-
-  name String
-
-  description String?
-
-  organizationId String
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  products Product[]
+  user User? @relation(fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-}
-
-model Product {
-  id String @id @default(uuid())
-
-  name String
-
-  description String?
-
-  organizationId String
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  categoryId String
-
-  category ProductCategory @relation(fields: [categoryId], references: [id])
-
-  variants ProductVariant[]
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-}
-
-model ProductVariant {
-  id String @id @default(uuid())
-
-  sku String @unique
-
-  name String
-
-  costPrice Float
-
-  sellingPrice Float
-
-  productId String
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  attributes VariantAttribute[]
-
-  inventory Inventory[]
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-}
-
-model Attribute {
-  id String @id @default(uuid())
-
-  name String
-
-  values AttributeValue[]
-}
-
-model AttributeValue {
-  id String @id @default(uuid())
-
-  value String
-
-  attributeId String
-
-  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
-
-  variants VariantAttribute[]
-}
-
-model VariantAttribute {
-  id String @id @default(uuid())
-
-  variantId String
-
-  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-
-  attributeValueId String
-
-  attributeValue AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
-}
-
-model Inventory {
-  id String @id @default(uuid())
-
-  quantity Float @default(0)
-
-  reorderLevel Float?
-
-  variantId String
-
-  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
 }
