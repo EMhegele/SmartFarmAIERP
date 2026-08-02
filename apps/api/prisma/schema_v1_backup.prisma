@@ -1,0 +1,196 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id   String @id @default(uuid())
+  name String @unique
+
+  users      User[]
+  facilities Facility[]
+  products   Product[]
+  categories ProductCategory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id String @id @default(uuid())
+
+  firstName String
+  lastName  String
+
+  email        String @unique
+  passwordHash String
+
+  isActive Boolean @default(true)
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userRoles UserRole[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  userRoles UserRole[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserRole {
+  id String @id @default(uuid())
+
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Facility {
+  id String @id @default(uuid())
+
+  name String
+
+  code String?
+
+  description String?
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model ProductCategory {
+  id String @id @default(uuid())
+
+  name String
+
+  description String?
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id String @id @default(uuid())
+
+  name String
+
+  description String?
+
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  categoryId String
+
+  category ProductCategory @relation(fields: [categoryId], references: [id])
+
+  variants ProductVariant[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model ProductVariant {
+  id String @id @default(uuid())
+
+  sku String @unique
+
+  name String
+
+  costPrice Float
+
+  sellingPrice Float
+
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  attributes VariantAttribute[]
+
+  inventory Inventory[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model Attribute {
+  id String @id @default(uuid())
+
+  name String
+
+  values AttributeValue[]
+}
+
+model AttributeValue {
+  id String @id @default(uuid())
+
+  value String
+
+  attributeId String
+
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  variants VariantAttribute[]
+}
+
+model VariantAttribute {
+  id String @id @default(uuid())
+
+  variantId String
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  attributeValueId String
+
+  attributeValue AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+}
+
+model Inventory {
+  id String @id @default(uuid())
+
+  quantity Float @default(0)
+
+  reorderLevel Float?
+
+  variantId String
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
